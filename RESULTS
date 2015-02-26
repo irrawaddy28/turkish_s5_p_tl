@@ -1,0 +1,18 @@
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+dev spks 5, test spks 14
+==========================
+#trn: 50
+%WER 57.07 [ 15277 / 26767, 965 ins, 5938 del, 8374 sub ] exp/mono50/decode_test/wer_5
+%WER 57.09 [ 15281 / 26767, 939 ins, 6112 del, 8230 sub ] exp/tri150/decode_test/wer_6
+%WER 57.14 [ 15295 / 26767, 1184 ins, 5407 del, 8704 sub ] exp/tri2b50/decode_test/wer_3
+%WER 55.71 [ 14911 / 26767, 1022 ins, 5745 del, 8144 sub ] exp/tri3b50/decode_test/wer_3
+%WER 57.43 [ 15372 / 26767, 939 ins, 6144 del, 8289 sub ] exp/tri3b50/decode_test.si/wer_4
+
+#trn: full set
+%WER 38.87 [ 10404 / 26767, 631 ins, 3646 del, 6127 sub ] exp/mono/decode_test/wer_3
+%WER 26.34 [ 7050 / 26767, 543 ins, 2143 del, 4364 sub ] exp/tri1/decode_test/wer_8
+%WER 23.81 [ 6374 / 26767, 685 ins, 1669 del, 4020 sub ] exp/tri2b/decode_test/wer_6
+%WER 20.00 [ 5354 / 26767, 536 ins, 1536 del, 3282 sub ] exp/tri3b/decode_test/wer_6
+%WER 23.54 [ 6301 / 26767, 598 ins, 1715 del, 3988 sub ] exp/tri3b/decode_test.si/wer_6
+

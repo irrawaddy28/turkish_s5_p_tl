@@ -1,0 +1,1 @@
+../../s5_w_v2/local/turkish_prepare_dict.sh

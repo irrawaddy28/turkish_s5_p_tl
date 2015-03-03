@@ -82,14 +82,14 @@ fi
 # timit/run.sh for phn models
 train=train${num_trn_utt}
 mono=mono${num_trn_utt}
-mono_ali=mono_ali${num_trn_utt}
+mono_ali=mono${num_trn_utt}_ali
 tri1=tri1${num_trn_utt}
-tri1_ali=tri1_ali${num_trn_utt}
+tri1_ali=tri1${num_trn_utt}_ali
 tri2a=tri2a${num_trn_utt}
 tri2b=tri2b${num_trn_utt}
-tri2b_ali=tri2b_ali${num_trn_utt}
+tri2b_ali=tri2b${num_trn_utt}_ali
 tri3b=tri3b${num_trn_utt}
-tri3b_ali=tri3b_ali${num_trn_utt}
+tri3b_ali=tri3b${num_trn_utt}_ali
 
 if [[ $stage -eq 3 ]]; then
 echo ============================================================================
@@ -101,8 +101,8 @@ steps/tl/train_mono.sh --nj "$train_nj" --cmd "$train_cmd" --langwts-config "con
 
 utils/mkgraph.sh --mono data/lang exp/$mono exp/$mono/graph
 
-#steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
-# exp/mono/graph data/dev exp/mono/decode_dev
+steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+ exp/$mono/graph data/dev exp/$mono/decode_dev
 
 steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
   exp/$mono/graph data/test exp/$mono/decode_test
@@ -116,15 +116,19 @@ echo ===========================================================================
 steps/align_si.sh --boost-silence 1.25 --nj "$train_nj" --cmd "$train_cmd" \
  data/$train data/lang exp/$mono exp/${mono_ali}
 
-# Train tri1, which is deltas + delta-deltas, on train data.
+# cp the lang ali from mono/langali/* and save it in mono_ali/langali/*
+# Ideally, we need to again do a convert-ali on lang ali using mono/final.mdl 
+# since the lang ali in mono/langali/* is based on mono/38.mdl, not final.mdl
 cp -r exp/${mono}/langali exp/${mono_ali} 2>/dev/null
+
+# Train tri1, which is deltas + delta-deltas, on train data.
 steps/tl/train_deltas.sh --cmd "$train_cmd" --langwts-config "conf/l2.conf" \
  $numLeavesTri1 $numGaussTri1 data/$train data/lang exp/${mono_ali} exp/$tri1
 
 utils/mkgraph.sh data/lang exp/$tri1 exp/$tri1/graph
 
-#steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
-# exp/tri1/graph data/dev exp/tri1/decode_dev
+steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+ exp/$tri1/graph data/dev exp/$tri1/decode_dev
 
 steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
  exp/$tri1/graph data/test exp/$tri1/decode_test

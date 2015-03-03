@@ -14,7 +14,7 @@ conf/
 ------
 conf/dev_spk.list				<based on turkish corpus>			
 conf/test_spk.list				<based on turkish corpus>	
-metu2worldmap.txt				<linked to s5_w_v2>
+
 		
 conf/fbank.conf					cp timit/conf/fbank.conf			
 conf/mfcc.conf					cp timit/conf/mfcc.conf				

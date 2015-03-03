@@ -75,7 +75,7 @@ done
 
 #utils/combine_data.sh data/test data/test_{mar87,oct87,feb89,oct89,feb91,sep92}
 #steps/compute_cmvn_stats.sh data/test exp/make_feat/test $featdir
-utils/subset_data_dir.sh data/train ${num_trn_utt:-1000} data/train${num_trn_utt:-.1k}
+#utils/subset_data_dir.sh data/train ${num_trn_utt:-1000} data/train${num_trn_utt:-.1k}
 fi
 
 # Amit: Everything below this is same as rm/run.sh for word models and 
@@ -90,6 +90,8 @@ tri2b=tri2b${num_trn_utt}
 tri2b_ali=tri2b${num_trn_utt}_ali
 tri3b=tri3b${num_trn_utt}
 tri3b_ali=tri3b${num_trn_utt}_ali
+
+[[ -d $featdir ]] && utils/subset_data_dir.sh data/train ${num_trn_utt:-1000} data/train${num_trn_utt:-.1k}
 
 if [[ $stage -eq 3 ]]; then
 echo ============================================================================

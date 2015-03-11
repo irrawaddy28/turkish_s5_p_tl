@@ -54,8 +54,8 @@ stage=$1
 num_trn_utt=$2
 
 # [[ $num_trn_utt =~ ^[0-9]+$ ]] returns true if $num_trn_utt is a number
-[[ $num_trn_utt =~ ^[0-9]+$ ]] && echo "Will train acoustic models on $num_trn_utt utterances" \
-	|| { num_trn_utt=""; echo "Will train acoustic models on all utterances"; }
+[[ $num_trn_utt =~ ^[0-9]+$ ]] && echo "Stage $stage: Train acoustic models on $num_trn_utt utterances" \
+	|| { num_trn_utt=""; echo "Stage $stage: Train acoustic models on all utterances"; }
 
 # Set up some configs based on input args
 # 1) Number of senone labels and mixtures

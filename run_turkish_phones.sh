@@ -2,14 +2,16 @@
 
 . cmd.sh
 set -e # exit on error
+if [[ -f path.sh ]]; then . ./path.sh; fi
 
-# Acoustic model parameters
-numLeavesTri1=2500
-numGaussTri1=15000
-numLeavesMLLT=2500
-numGaussMLLT=15000
-numLeavesSAT=2500
-numGaussSAT=15000
+# default settings
+# Acoustic model parameters (for full training set)
+numLeavesTri1=2500 #2500
+numGaussTri1=15000 #15000
+numLeavesMLLT=2500 #2500
+numGaussMLLT=15000 #15000
+numLeavesSAT=2500 #2500
+numGaussSAT=15000 #15000
 numGaussUBM=400
 numLeavesSGMM=7000
 numGaussSGMM=9000
@@ -18,25 +20,76 @@ feats_nj=10
 train_nj=30
 decode_nj=5
 
-# call the next line with the directory where the RM data is
-# (the argument below is just an example).  This should contain
-# subdirectories named as follows:
-#    rm1_audio1  rm1_audio2	rm2_audio
-#local/rm_data_prep.sh /mnt/matylda2/data/RM
-#local/rm_data_prep.sh /home/dpovey/data/LDC93S3A/rm_comp
+featdir=mfcc
 
 # Directory where wav files are present
-TURKROOT=/media/data/workspace/corpus/turkish/data/speech-text
+TURKROOT=${corpus_dir}/turkish/data/speech-text
 # Enter either "WRD" (to measure WER) or "PHN" (to measure PER)
 extn="PHN"
+
+# L2 parameters
+l2dir="../../timit/s5wb" 			# source language (l2) kaldi dir
+l2rho=0 							# weight of l2 language
+l2mapf="../../wsj/s5/utils/phonemap/timit2turkishmap.txt" # l2-to-l1 phone map file
+l2mapcol=2                         # col in l2-to-l1 phone map file that contains the l1 phones
+l2conf="conf/l2.conf"
+
+. parse_options.sh || exit 1;
+
+if [ $# != 2 ]; then
+  echo "Usage: $0 <stage> <num utterances>"
+  echo " e.g.: $0 --l2rho 0.02 1 all"
+  echo "main options (for others, see top of script file)"  
+  echo "  --l2dir                                         # source language (l2) kaldi dir"
+  echo "  --l2rho <f|0>                                   # weight of l2 language"
+  echo "  --l2mapf                                        # l2-to-l1 phone map file"
+  echo "  --l2mapcol                                      # col in l2-to-l1 phone map file that contains the l1 phones"    
+  echo "  --nj <n|1>                                      # Number of jobs (also see num-processes and num-threads)"    
+  exit 1;
+fi
+
+# input args
 stage=$1
-# If you want to train on a subset of trn data, enter a number. Otherwise, leave it empty (which means train on full set)
+# If you want to train on a subset of trn data, enter a number. Otherwise, enter "all" or "full" (which means train on full set)
 num_trn_utt=$2
 
 # [[ $num_trn_utt =~ ^[0-9]+$ ]] returns true if $num_trn_utt is a number
 [[ $num_trn_utt =~ ^[0-9]+$ ]] && echo "Will train acoustic models on $num_trn_utt utterances" \
-	|| echo "Will train acoustic models on all utterances"
+	|| { num_trn_utt=""; echo "Will train acoustic models on all utterances"; }
 
+# Set up some configs based on input args
+# 1) Number of senone labels and mixtures
+# Calculate num leaves and num Gauss from the number of utterances using the rule: 
+# nMD/100 = num utts x (avg durn in secs per utt), n = no. of frames per parameter, M = total #mixtures, D = params per mix.
+# Each Turkish utt is about 4 secs long; skip rate at 100 frames/sec; 80 params per Gauss mix (mean = 39, diag cov = 39, wt = 1);
+[[ ! -z $num_trn_utt ]] && {
+export num_trn_utt;
+numGaussTri1=`perl -e '$x=int($ENV{num_trn_utt}*4*100/80); print "$x";'`;
+numLeavesTri1=`echo "$numGaussTri1/5" | bc`
+}
+echo -e "#Triphone States = $numLeavesTri1 \n#Triphone Mix = $numGaussTri1";
+
+train=train${num_trn_utt}
+
+mono=mono${num_trn_utt}_l2w${l2rho}
+mono_ali=${mono}_ali
+
+tri1=tri1${num_trn_utt}_l2w${l2rho}
+tri1_ali=${tri1}_ali
+
+tri2a=tri2a${num_trn_utt}_l2w${l2rho}
+tri2a_ali=${tri2a}_ali
+
+tri2b=tri2b${num_trn_utt}_l2w${l2rho}
+tri2b_ali=${tri2b}_ali
+
+tri3b=tri3b${num_trn_utt}_l2w${l2rho}
+tri3b_ali=${tri3b}_ali
+
+# 2) Build the conf/l2.conf file	
+echo "$l2dir  $l2rho  $l2mapf  $l2mapcol" > $l2conf
+
+# Training stages start from here
 if [[ $stage -eq 1 ]]; then
 # If $num_trn_utt is empty (train full set), then run the data prep and feat generation part.
 local/turkish_data_prep.sh  $TURKROOT $extn
@@ -58,7 +111,6 @@ if [[ $stage -eq 2 ]]; then
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.   You can make a soft link if you want.
 # Generate features for the full train dev test set even if you chose to train on subsets
-featdir=mfcc
 
 for x in train dev test; do
   [ -s  data/$x/spk2utt ] && \
@@ -75,29 +127,20 @@ done
 
 #utils/combine_data.sh data/test data/test_{mar87,oct87,feb89,oct89,feb91,sep92}
 #steps/compute_cmvn_stats.sh data/test exp/make_feat/test $featdir
-#utils/subset_data_dir.sh data/train ${num_trn_utt:-1000} data/train${num_trn_utt:-.1k}
+utils/subset_data_dir.sh data/train 1000 data/train.1k
 fi
 
 # Amit: Everything below this is same as rm/run.sh for word models and 
 # timit/run.sh for phn models
-train=train${num_trn_utt}
-mono=mono${num_trn_utt}
-mono_ali=mono${num_trn_utt}_ali
-tri1=tri1${num_trn_utt}
-tri1_ali=tri1${num_trn_utt}_ali
-tri2a=tri2a${num_trn_utt}
-tri2b=tri2b${num_trn_utt}
-tri2b_ali=tri2b${num_trn_utt}_ali
-tri3b=tri3b${num_trn_utt}
-tri3b_ali=tri3b${num_trn_utt}_ali
-
-[[ -d $featdir ]] && utils/subset_data_dir.sh data/train ${num_trn_utt:-1000} data/train${num_trn_utt:-.1k}
-
 if [[ $stage -eq 3 ]]; then
+
+# create subset data dir if the training set is a reduced set
+[[ -d $featdir && ! -d data/$train ]] && utils/subset_data_dir.sh data/train ${num_trn_utt} data/$train
+
 echo ============================================================================
 echo "                     MonoPhone Training & Decoding                        "
 echo ============================================================================
-steps/tl/train_mono.sh --nj "$train_nj" --cmd "$train_cmd" --langwts-config "conf/l2.conf" data/train${num_trn_utt:-.1k} data/lang exp/$mono
+steps/tl/train_mono.sh --nj "$train_nj" --cmd "$train_cmd" --langwts-config "$l2conf" data/train${num_trn_utt:-.1k} data/lang exp/$mono
 
 #show-transitions data/lang/phones.txt exp/tri2a/final.mdl  exp/tri2a/final.occs | perl -e 'while(<>) { if (m/ sil /) { $l = <>; $l =~ m/pdf = (\d+)/|| die "bad line $l";  $tot += $1; }} print "Total silence count $tot\n";'
 
@@ -124,7 +167,7 @@ steps/align_si.sh --boost-silence 1.25 --nj "$train_nj" --cmd "$train_cmd" \
 cp -r exp/${mono}/langali exp/${mono_ali} 2>/dev/null
 
 # Train tri1, which is deltas + delta-deltas, on train data.
-steps/tl/train_deltas.sh --cmd "$train_cmd" --langwts-config "conf/l2.conf" \
+steps/tl/train_deltas.sh --cmd "$train_cmd" --langwts-config "$l2conf" \
  $numLeavesTri1 $numGaussTri1 data/$train data/lang exp/${mono_ali} exp/$tri1
 
 utils/mkgraph.sh data/lang exp/$tri1 exp/$tri1/graph

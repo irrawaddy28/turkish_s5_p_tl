@@ -27,7 +27,7 @@ do
 	do
 		for t in $tests
 		do
-			bash run_turkish_words.sh --l2rho "$r" $t $n
+			bash run_turkish_phones.sh --l2rho "$r" $t $n
 		done
 	done
 done

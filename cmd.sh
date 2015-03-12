@@ -15,6 +15,7 @@
 
 train_cmd="run.pl"
 decode_cmd="run.pl"
+cuda_cmd="run.pl"
 # with run.pl we do training locally.  Note: for jobs on smallish subsets,
 # it's way faster to run on a single machine with a handful of CPUs, as
 # you avoid the latency of starting GridEngine jobs.

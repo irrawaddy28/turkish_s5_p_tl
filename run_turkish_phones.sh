@@ -87,6 +87,7 @@ tri3b=tri3b${num_trn_utt}_l2w${l2rho}
 tri3b_ali=${tri3b}_ali
 
 # 2) Build the conf/l2.conf file	
+l2conf="conf/l2w${l2rho}.conf"
 echo "$l2dir  $l2rho  $l2mapf  $l2mapcol" > $l2conf
 
 # Training stages start from here

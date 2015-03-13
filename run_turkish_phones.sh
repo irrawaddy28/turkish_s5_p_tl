@@ -64,8 +64,14 @@ num_trn_utt=$2
 # Each Turkish utt is about 4 secs long; skip rate at 100 frames/sec; 80 params per Gauss mix (mean = 39, diag cov = 39, wt = 1);
 [[ ! -z $num_trn_utt ]] && {
 export num_trn_utt;
-numGaussTri1=`perl -e '$x=int($ENV{num_trn_utt}*4*100/80); print "$x";'`;
+numGaussTri1=`perl -e '$x=int($ENV{num_trn_utt}*4*100*2/80); print "$x";'`;
 numLeavesTri1=`echo "$numGaussTri1/5" | bc`
+
+numLeavesMLLT=$numLeavesTri1 
+numGaussMLLT=$numGaussTri1 
+
+numLeavesSAT=$numLeavesTri1 
+numGaussSAT=$numGaussTri1
 }
 echo -e "#Triphone States = $numLeavesTri1 \n#Triphone Mix = $numGaussTri1";
 
@@ -194,8 +200,8 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
 
 utils/mkgraph.sh data/lang exp/$tri2b exp/$tri2b/graph
 
-#steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
-# exp/tri2b/graph data/dev exp/tri2b/decode_dev
+steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+ exp/$tri2b/graph data/dev exp/$tri2b/decode_dev
 
 steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
  exp/$tri2b/graph data/test exp/$tri2b/decode_test
@@ -216,8 +222,8 @@ steps/train_sat.sh --cmd "$train_cmd" \
 
 utils/mkgraph.sh data/lang exp/$tri3b exp/$tri3b/graph
 
-#steps/decode_fmllr.sh --nj "$decode_nj" --cmd "$decode_cmd" \
-# exp/tri3b/graph data/dev exp/tri3b/decode_dev
+steps/decode_fmllr.sh --nj "$decode_nj" --cmd "$decode_cmd" \
+ exp/$tri3b/graph data/dev exp/$tri3b/decode_dev
 
 steps/decode_fmllr.sh --nj "$decode_nj" --cmd "$decode_cmd" \
  exp/$tri3b/graph data/test exp/$tri3b/decode_test
@@ -227,8 +233,59 @@ steps/align_fmllr.sh --nj "$train_nj" --cmd "$train_cmd" \
 fi
 
 if [[ $stage -eq 7 ]]; then
+echo ============================================================================
+echo "  Not supported yet    tri1_mpe : (Delta + Delta-Delta) + MPE Training & Decoding     "
+echo ============================================================================
+# Align tri1 system with train data. 
+# Use exp/${tri1_ali} to train on alignments from delta + delta-delta training
+# Questions: "steps/align_si.sh --use-graphs true" means we need $tri1/fsts.JOB.gz to generate
+# tri1 ali in a form thats reqd for mpe training. But currently $tri1 does not 
+# generate such graphs ($tri1/fsts.JOB.gz). Can I generate tri ali w/o the depending
+# on such graphs and proceed for mpe training? This is still sth I need to figure out.
+# If we are able to train mpe on delta + delta-delta ali, only then can we compare
+# evenly/fairly between ML-ML training (trained on delta + delta-delta feats) and train mpe.
+# If we train mpe on lda + mllt (tri2b system), then we are inherently gaining more
+# advantage by using lda + mllt.
+steps/align_si.sh --nj "$train_nj" --cmd "$train_cmd" \
+ --use-graphs true data/$train data/lang exp/$tri1 exp/${tri1_ali} 
+ 
+steps/make_denlats.sh --nj "$train_nj" --cmd "$train_cmd" \
+  data/$train data/lang  exp/$tri1 exp/${tri1_denlats}
+
+steps/train_mpe.sh data/$train data/lang exp/${tri1_ali} exp/${tri1_denlats} exp/${tri1_mpe}
+
+steps/decode.sh --config conf/decode.config --iter 4 --nj "$decode_nj"  --cmd "$decode_cmd" \
+   exp/$tri2b/graph data/test exp/${tri1_mpe}/decode_it4
+   
+steps/decode.sh --config conf/decode.config --iter 3 --nj "$decode_nj"  --cmd "$decode_cmd" \
+   exp/$tri2b/graph data/test exp/${tri1_mpe}/decode_it3
+fi
+
+if [[ $stage -eq 8 ]]; then
+echo ============================================================================
+echo "                 tri2b_mpe : (LDA + MLLT) + MPE Training & Decoding     "
+echo ============================================================================
+# Align tri2 system with train data. 
+# Use exp/${tri2b_ali} to train on alignments from LDA + MLLT training
+steps/align_si.sh --nj "$train_nj" --cmd "$train_cmd" \
+ --use-graphs true data/$train data/lang exp/$tri2b exp/${tri2b_ali}
+ 
+steps/make_denlats.sh --nj "$train_nj" --cmd "$train_cmd" \
+  data/$train data/lang  exp/$tri2b exp/${tri2b_denlats}
+
+steps/train_mpe.sh data/$train data/lang exp/${tri2b_ali} exp/${tri2b_denlats} exp/${tri2b_mpe}
+
+steps/decode.sh --config conf/decode.config --iter 4 --nj "$decode_nj"  --cmd "$decode_cmd" \
+   exp/$tri2b/graph data/test exp/${tri2b_mpe}/decode_it4
+   
+steps/decode.sh --config conf/decode.config --iter 3 --nj "$decode_nj"  --cmd "$decode_cmd" \
+   exp/$tri2b/graph data/test exp/${tri2b_mpe}/decode_it3
+fi
+
+if [[ $stage -eq 9 ]]; then
 # Karel's neural net recipe.                                                                                                                                        
-local/nnet/run_dnn.sh                                                                                                                                                  
+[[ ! -z  ${num_trn_utt} ]] && num_trn_opt=$(echo "--num-trn-utt ${num_trn_utt}") || num_trn_opt="" 
+local/nnet/run_dnn.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" $num_trn_opt exp/$tri1                                                                                                                                                   
 
 # Karel's CNN recipe.
 # local/nnet/run_cnn.sh

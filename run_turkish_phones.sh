@@ -289,20 +289,20 @@ if [[ $stage -eq 9 ]]; then
 [[ ! -z  ${num_trn_utt} ]] && num_trn_opt=$(echo "--num-trn-utt ${num_trn_utt}") || num_trn_opt="" 
 
 local/nnet/run_dnn.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \
-	--use-delta "true" --train-iters 20 --post-fix ${post_fix} ${num_trn_opt} exp/$tri3b
+	--use-delta "true" --train-iters 20 ${num_trn_opt} exp/$tri2b
 	
 l2iters="2 4 6 8 10"
 for i in $l2iters
 do
 steps/tl/nnet/run_dnn_sequential.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \
---use-delta "true" --train-iters 20 --l2-iters $i  --post-fix ${post_fix}_l2iter$i  ${num_trn_opt} $l2conf exp/$tri3b
+--use-delta "true" --train-iters 20 --l2-iters $i  --post-fix "l2iter$i"  ${num_trn_opt} $l2conf exp/$tri2b
 done
 
 xent_wts="0.0001 0.0002 0.0004 0.0006 0.0008 0.001 0.002 0.004 0.006 0.008 0.01 0.02 0.04 0.06 0.08 0.1"
 for w in $xent_wts 
 do
 steps/tl/nnet/run_dnn_joint.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \
---use-delta "true" --train-iters 20 --xent-wt $w --post-fix ${post_fix}_xent$w  ${num_trn_opt} $l2conf exp/$tri3b
+--use-delta "true" --train-iters 20 --xent-wt $w --post-fix "xent$w"  ${num_trn_opt} $l2conf exp/$tri2b
 done
 # Karel's CNN recipe.
 # local/nnet/run_cnn.sh

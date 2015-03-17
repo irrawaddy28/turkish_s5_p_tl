@@ -61,7 +61,7 @@ num_trn_utt=$2
 # 1) Number of senone labels and mixtures
 # Calculate num leaves and num Gauss from the number of utterances using the rule: 
 # nMD/100 = num utts x (avg durn in secs per utt), n = no. of frames per parameter, M = total #mixtures, D = params per mix.
-# Each Turkish utt is about 4 secs long; skip rate at 100 frames/sec; 80 params per Gauss mix (mean = 39, diag cov = 39, wt = 1);
+# Each Turkish utt is about 4 secs long; skip rate at 100 frames/sec; D = 80 params per Gauss mix (mean = 39, diag cov = 39, wt = 1);
 [[ ! -z $num_trn_utt ]] && {
 export num_trn_utt;
 numGaussTri1=`perl -e '$x=int($ENV{num_trn_utt}*4*100*2/80); print "$x";'`;
@@ -77,19 +77,21 @@ echo -e "#Triphone States = $numLeavesTri1 \n#Triphone Mix = $numGaussTri1";
 
 train=train${num_trn_utt}
 
-mono=mono${num_trn_utt}_l2w${l2rho}
+post_fix=${num_trn_utt}_l2w${l2rho}
+
+mono=mono${post_fix}
 mono_ali=${mono}_ali
 
-tri1=tri1${num_trn_utt}_l2w${l2rho}
+tri1=tri1${post_fix}
 tri1_ali=${tri1}_ali
 
-tri2a=tri2a${num_trn_utt}_l2w${l2rho}
+tri2a=tri2a${post_fix}
 tri2a_ali=${tri2a}_ali
 
-tri2b=tri2b${num_trn_utt}_l2w${l2rho}
+tri2b=tri2b${post_fix}
 tri2b_ali=${tri2b}_ali
 
-tri3b=tri3b${num_trn_utt}_l2w${l2rho}
+tri3b=tri3b${post_fix}
 tri3b_ali=${tri3b}_ali
 
 # 2) Build the conf/l2.conf file	
@@ -283,10 +285,25 @@ steps/decode.sh --config conf/decode.config --iter 3 --nj "$decode_nj"  --cmd "$
 fi
 
 if [[ $stage -eq 9 ]]; then
-# Karel's neural net recipe.                                                                                                                                        
+# Karel's neural net recipe.     
 [[ ! -z  ${num_trn_utt} ]] && num_trn_opt=$(echo "--num-trn-utt ${num_trn_utt}") || num_trn_opt="" 
-local/nnet/run_dnn.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" $num_trn_opt exp/$tri1                                                                                                                                                   
 
+local/nnet/run_dnn.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \
+	--use-delta "true" --train-iters 20 --post-fix ${post_fix} ${num_trn_opt} exp/$tri3b
+	
+l2iters="2 4 6 8 10"
+for i in $l2iters
+do
+steps/tl/nnet/run_dnn_sequential.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \
+--use-delta "true" --train-iters 20 --l2-iters $i  --post-fix ${post_fix}_l2iter$i  ${num_trn_opt} $l2conf exp/$tri3b
+done
+
+xent_wts="0.0001 0.0002 0.0004 0.0006 0.0008 0.001 0.002 0.004 0.006 0.008 0.01 0.02 0.04 0.06 0.08 0.1"
+for w in $xent_wts 
+do
+steps/tl/nnet/run_dnn_joint.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \
+--use-delta "true" --train-iters 20 --xent-wt $w --post-fix ${post_fix}_xent$w  ${num_trn_opt} $l2conf exp/$tri3b
+done
 # Karel's CNN recipe.
 # local/nnet/run_cnn.sh
 fi

@@ -64,7 +64,7 @@ num_trn_utt=$2
 # Each Turkish utt is about 4 secs long; skip rate at 100 frames/sec; 80 params per Gauss mix (mean = 39, diag cov = 39, wt = 1);
 [[ ! -z $num_trn_utt ]] && {
 export num_trn_utt;
-numGaussTri1=`perl -e '$x=int($ENV{num_trn_utt}*4*100*2/80); print "$x";'`;
+numGaussTri1=`perl -e '$x=int($ENV{num_trn_utt}*4*100*3/80); print "$x";'`;
 numLeavesTri1=`echo "$numGaussTri1/5" | bc`
 
 numLeavesMLLT=$numLeavesTri1 
@@ -290,3 +290,4 @@ local/nnet/run_dnn.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-
 # Karel's CNN recipe.
 # local/nnet/run_cnn.sh
 fi
+rm $l2conf

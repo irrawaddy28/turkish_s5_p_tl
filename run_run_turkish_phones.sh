@@ -9,9 +9,10 @@
 # 8 = LDA + MLLT + MPE
 # 9 = Karel's nnet
 
-bash run_turkish_phones.sh 1  "all"
-bash run_turkish_phones.sh 2  "all"
+# bash run_turkish_phones.sh 1  "all"
+# bash run_turkish_phones.sh 2  "all"
 
+: << 'COMMENT'
 rhos="0.00001 0.00002 0.00004 0.00006 0.00008 0.0001 0.0002 0.0004 0.0006 0.0008 0.001 0.002 0.004 0.006 0.008 0.01 0.02 0.04"
 tests="3 4 5 6"
 subsets="100 200 500 1000" #"200 500 1000"
@@ -27,4 +28,9 @@ do
 		done
 	done
 done
+COMMENT
 
+bash run_turkish_phones.sh --l2rho "0.001" 9 100
+bash run_turkish_phones.sh --l2rho "0.0006" 9 200
+bash run_turkish_phones.sh --l2rho "0.0002" 9 500
+bash run_turkish_phones.sh --l2rho "0.00002" 9 1000

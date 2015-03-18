@@ -288,17 +288,30 @@ if [[ $stage -eq 9 ]]; then
 # Karel's neural net recipe.     
 [[ ! -z  ${num_trn_utt} ]] && num_trn_opt=$(echo "--num-trn-utt ${num_trn_utt}") || num_trn_opt="" 
 
+# TL-HMM + DNN
 local/nnet/run_dnn.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \
 	--use-delta "true" --train-iters 20 ${num_trn_opt} exp/$tri2b
-	
+
+# TL-HMM + TL-DNN
+
+# Convert tri1/langali using tri2b model and save in tri2b_ali/langali
+# To do: Ideally langali/ali* should be converted during by the end of tri2b training 
+alidir=exp/$tri1
+dir=exp/${tri2b_ali}
+mkdir -p $dir/langali
+nj=$(cat $alidir/num_jobs 2>/dev/null)
+$train_cmd JOB=1:$nj $dir/log/langali/convert.langali.JOB.log \
+		convert-ali $alidir/final.mdl $dir/final.mdl $dir/tree \
+		"ark,t:gunzip -c $alidir/langali/ali.lang0.JOB.gz|" "ark,t:|gzip -c >$dir/langali/ali.lang0.JOB.gz" || exit 1;
+
 l2iters="2 4 6 8 10"
 for i in $l2iters
 do
 steps/tl/nnet/run_dnn_sequential.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \
---use-delta "true" --train-iters 20 --l2-iters $i  --post-fix "l2iter$i"  ${num_trn_opt} $l2conf exp/$tri2b
+--use-delta "true" --train-iters 10 --l2-iters $i  --post-fix "l2iter$i"  ${num_trn_opt} $l2conf exp/$tri2b
 done
 
-xent_wts="0.0001 0.0002 0.0004 0.0006 0.0008 0.001 0.002 0.004 0.006 0.008 0.01 0.02 0.04 0.06 0.08 0.1"
+xent_wts="0.0001 0.0002 0.0004 0.0006 0.0008 0.001 0.002 0.004 0.006 0.008 0.01 0.02 0.04 0.06 0.08 0.1 0.2 0.4 0.6 0.8"
 for w in $xent_wts 
 do
 steps/tl/nnet/run_dnn_joint.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \

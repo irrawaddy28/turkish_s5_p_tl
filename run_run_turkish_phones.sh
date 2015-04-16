@@ -30,17 +30,17 @@ do
 done
 COMMENT
 
-# gaussx1
-# bash run_turkish_phones.sh --l2rho "???" 9 100
-# bash run_turkish_phones.sh --l2rho "???" 9 200
-# bash run_turkish_phones.sh --l2rho "???" 9 500
-# bash run_turkish_phones.sh --l2rho "???" 9 1000
+# gaussx1 
+ bash run_turkish_phones.sh --l2rho "0.001" 9 100
+ bash run_turkish_phones.sh --l2rho "0.00002" 9 200
+ bash run_turkish_phones.sh --l2rho "0.0004" 9 500
+ bash run_turkish_phones.sh --l2rho "0.002" 9 1000
 
 # gaussx2
-# bash run_turkish_phones.sh --l2rho "0.001" 9 100
-# bash run_turkish_phones.sh --l2rho "0.0006" 9 200
-# bash run_turkish_phones.sh --l2rho "0.0002" 9 500
-# bash run_turkish_phones.sh --l2rho "0.00002" 9 1000
+ bash run_turkish_phones.sh --l2rho "0.001" 9 100
+ bash run_turkish_phones.sh --l2rho "0.0006" 9 200
+ bash run_turkish_phones.sh --l2rho "0.0002" 9 500
+ bash run_turkish_phones.sh --l2rho "0.00002" 9 1000
 
 # gaussx3
 # bash run_turkish_phones.sh --l2rho "???" 9 100

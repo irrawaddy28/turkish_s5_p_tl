@@ -64,7 +64,7 @@ num_trn_utt=$2
 # Each Turkish utt is about 4 secs long; skip rate at 100 frames/sec; D = 80 params per Gauss mix (mean = 39, diag cov = 39, wt = 1);
 [[ ! -z $num_trn_utt ]] && {
 export num_trn_utt;
-numGaussTri1=`perl -e '$x=int($ENV{num_trn_utt}*4*100*2/80); print "$x";'`;
+numGaussTri1=`perl -e '$x=int($ENV{num_trn_utt}*4*100*2/80); print "$x";'`; # change 4*100*2/80 to 4*100*1/80 if you want to decrease num gauss 
 numLeavesTri1=`echo "$numGaussTri1/5" | bc`
 
 numLeavesMLLT=$numLeavesTri1 
@@ -289,8 +289,8 @@ if [[ $stage -eq 9 ]]; then
 [[ ! -z  ${num_trn_utt} ]] && num_trn_opt=$(echo "--num-trn-utt ${num_trn_utt}") || num_trn_opt="" 
 
 # TL-HMM + DNN
-local/nnet/run_dnn.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \
-	--use-delta "true" --train-iters 20 ${num_trn_opt} exp/$tri2b
+# local/nnet/run_dnn.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \
+#	--use-delta "true" --train-iters 20 ${num_trn_opt} exp/$tri2b
 
 # TL-HMM + TL-DNN
 
@@ -303,7 +303,7 @@ nj=$(cat $alidir/num_jobs 2>/dev/null)
 $train_cmd JOB=1:$nj $dir/log/langali/convert.langali.JOB.log \
 		convert-ali $alidir/final.mdl $dir/final.mdl $dir/tree \
 		"ark,t:gunzip -c $alidir/langali/ali.lang0.JOB.gz|" "ark,t:|gzip -c >$dir/langali/ali.lang0.JOB.gz" || exit 1;
-
+		
 l2iters="2 4 6 8 10 12 14 16"
 for i in $l2iters
 do
@@ -311,11 +311,13 @@ steps/tl/nnet/run_dnn_sequential.sh --precomp-dbn "../../multilingualdbn/s5/exp/
 --use-delta "true" --train-iters 10 --l2-iters $i  --post-fix "l2iter$i"  ${num_trn_opt} $l2conf exp/$tri2b
 done
 
-xent_wts="-0.08 -0.06 -0.04 -0.02 0 0.0001 0.0002 0.0004 0.0006 0.0008 0.001 0.002 0.004 0.006 0.008 0.01 0.02 0.04 0.06 0.08 0.1 0.2 0.4 0.6 0.8 1 1.2 1.4"
+
+minibatch_size=256
+xent_wts="0 0.0001 0.0002 0.0004 0.0006 0.0008 0.001 0.002 0.004 0.006 0.008 0.01 0.02 0.04 0.06 0.08 0.1 0.2 0.4 0.6 0.8 1"
 for w in $xent_wts 
 do
 steps/tl/nnet/run_dnn_joint.sh --precomp-dbn "../../multilingualdbn/s5/exp/dnn4_pretrain-dbn" \
---use-delta "true" --train-iters 20 --xent-wt $w --post-fix "xent$w"  ${num_trn_opt} $l2conf exp/$tri2b
+--use-delta "true" --train-iters 20 --xent-wt $w --minibatch-size ${minibatch_size} --post-fix "xent${w}_l2100"  ${num_trn_opt} --num-trn-utt-l2 100 $l2conf exp/$tri2b
 done
 # Karel's CNN recipe.
 # local/nnet/run_cnn.sh
